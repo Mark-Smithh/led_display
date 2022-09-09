@@ -1,6 +1,8 @@
 package util
 
 import (
+	"fmt"
+	"net/http"
 	"strings"
 )
 
@@ -8,13 +10,10 @@ func Ucase(input string) string {
 	return strings.ToUpper(input)
 }
 
-type Display interface {
-	CanDisplayNumber() bool
-}
-
-type DisplayParams struct {
-	NumToDisplay   int
-	NumLedSegments int
+type RunImplementationParams struct {
+	NumToDisplay       int
+	NumLeds            int
+	HttpResponseWriter http.ResponseWriter
 }
 
 func numLedsNeededToDisplay(numToDisplay int) int {
@@ -30,4 +29,36 @@ func numLedsNeededToDisplay(numToDisplay int) int {
 	ledsRequiredToDisplay[9] = 9
 
 	return ledsRequiredToDisplay[numToDisplay]
+}
+
+func RunImplementations(params RunImplementationParams) {
+	allDisplays := []Display{}
+	allDisplays = append(allDisplays, StrSliceImplementation{Params: DisplayParams{NumToDisplay: params.NumToDisplay, NumLedSegments: params.NumLeds}})
+	allDisplays = append(allDisplays, RuneSliceImplementation{Params: DisplayParams{NumToDisplay: params.NumToDisplay, NumLedSegments: params.NumLeds}})
+	allDisplays = append(allDisplays, ByteSliceImplementation{Params: DisplayParams{NumToDisplay: params.NumToDisplay, NumLedSegments: params.NumLeds}})
+
+	if params.HttpResponseWriter == nil {
+		for _, d := range allDisplays {
+			if d.CanDisplayNumber() {
+				fmt.Println("Yes")
+			} else {
+				fmt.Println("No")
+			}
+		}
+		return
+	}
+
+	for _, d := range allDisplays {
+		if d.CanDisplayNumber() {
+			response := apiResponse{
+				Message: "true",
+			}
+			encodeResponse(response, params.HttpResponseWriter)
+		} else {
+			response := apiResponse{
+				Message: "false",
+			}
+			encodeResponse(response, params.HttpResponseWriter)
+		}
+	}
 }

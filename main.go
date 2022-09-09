@@ -21,18 +21,15 @@ func main() {
 	numLeds, err := strconv.Atoi(argsNoProgram[1])
 	errCheck(err)
 
-	allDisplays := []util.Display{}
-	allDisplays = append(allDisplays, util.StrSliceImplementation{Params: util.DisplayParams{NumToDisplay: numToDisplay, NumLedSegments: numLeds}})
-	allDisplays = append(allDisplays, util.RuneSliceImplementation{Params: util.DisplayParams{NumToDisplay: numToDisplay, NumLedSegments: numLeds}})
-	allDisplays = append(allDisplays, util.ByteSliceImplementation{Params: util.DisplayParams{NumToDisplay: numToDisplay, NumLedSegments: numLeds}})
-
-	for _, d := range allDisplays {
-		if d.CanDisplayNumber() {
-			fmt.Println("Yes")
-		} else {
-			fmt.Println("No")
-		}
+	runParameters := util.RunImplementationParams{
+		NumToDisplay: numToDisplay,
+		NumLeds:      numLeds,
 	}
+
+	util.RunImplementations(runParameters)
+
+	api := util.RestAPI{}
+	api.Start()
 }
 
 func errCheck(err error) {
