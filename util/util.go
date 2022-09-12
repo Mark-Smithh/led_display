@@ -3,7 +3,10 @@ package util
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
+
+	"github.com/patrickmn/go-cache"
 )
 
 func Ucase(input string) string {
@@ -48,6 +51,24 @@ func RunImplementations(params RunImplementationParams) {
 		return
 	}
 
+	cacheKey := strconv.Itoa(params.NumToDisplay) + "-" + strconv.Itoa(params.NumLeds)
+
+	canDisplayNumber, foundInCache := apiCache.Get(cacheKey)
+	if foundInCache {
+		if params.HttpResponseWriter == nil {
+			fmt.Println(canDisplayNumber)
+			return
+		}
+
+		response := apiResponse{
+			Message: strconv.FormatBool(canDisplayNumber.(bool)),
+		}
+		encodeResponse(response, params.HttpResponseWriter)
+		return
+	}
+
+	cacheValue := true
+
 	for _, d := range allDisplays {
 		if d.CanDisplayNumber() {
 			response := apiResponse{
@@ -58,7 +79,11 @@ func RunImplementations(params RunImplementationParams) {
 			response := apiResponse{
 				Message: "false",
 			}
+			cacheValue = false
 			encodeResponse(response, params.HttpResponseWriter)
 		}
 	}
+
+	fmt.Printf("adding cache key %s\n", cacheKey)
+	apiCache.Set(cacheKey, cacheValue, cache.NoExpiration)
 }

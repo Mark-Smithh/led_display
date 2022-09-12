@@ -2,9 +2,15 @@ package util
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
+	"time"
+
+	"github.com/patrickmn/go-cache"
 )
+
+var apiCache *cache.Cache
 
 type API interface {
 	Start()
@@ -25,8 +31,10 @@ type missingQueryStringParam struct {
 }
 
 func (r RestAPI) Start() {
+	apiCache = cache.New(5*time.Minute, 10*time.Minute)
 	http.HandleFunc("/candisplay", Answer)
 	http.HandleFunc("/", r.MsgBegin) //localhost:8080
+	fmt.Println("Starting http server to listen on port 8080.  http://localhost:8080/candisplay?num_display=[number]&num_led=[number")
 	http.ListenAndServe(":8080", nil)
 }
 
@@ -40,7 +48,7 @@ func (r RestAPI) MsgBegin(w http.ResponseWriter, req *http.Request) {
 }
 
 func msgBegin() string {
-	return "Only two arguments required:\n 1) The number to display on the LED.\n 2) The number of LED segments.\n"
+	return "Only two arguments required: 1) The number to display on the LED. 2) The number of LED segments."
 }
 
 func Answer(responseWriter http.ResponseWriter, req *http.Request) {
