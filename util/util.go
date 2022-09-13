@@ -34,11 +34,19 @@ func numLedsNeededToDisplay(numToDisplay int) int {
 	return ledsRequiredToDisplay[numToDisplay]
 }
 
-func RunImplementations(params RunImplementationParams) {
+type RunImplementationsResp struct {
+	CanDisplayNumber bool
+	CacheHit         bool
+}
+
+func RunImplementations(params RunImplementationParams) RunImplementationsResp {
 	allDisplays := []Display{}
 	allDisplays = append(allDisplays, StrSliceImplementation{Params: DisplayParams{NumToDisplay: params.NumToDisplay, NumLedSegments: params.NumLeds}})
 	allDisplays = append(allDisplays, RuneSliceImplementation{Params: DisplayParams{NumToDisplay: params.NumToDisplay, NumLedSegments: params.NumLeds}})
 	allDisplays = append(allDisplays, ByteSliceImplementation{Params: DisplayParams{NumToDisplay: params.NumToDisplay, NumLedSegments: params.NumLeds}})
+
+	canDisplayNumberComputedValue := true
+	foundInCache := false
 
 	if params.HttpResponseWriter == nil {
 		for _, d := range allDisplays {
@@ -46,28 +54,22 @@ func RunImplementations(params RunImplementationParams) {
 				fmt.Println("Yes")
 			} else {
 				fmt.Println("No")
+				canDisplayNumberComputedValue = false
 			}
 		}
-		return
+		return RunImplementationsResp{CanDisplayNumber: canDisplayNumberComputedValue, CacheHit: foundInCache}
 	}
 
 	cacheKey := strconv.Itoa(params.NumToDisplay) + "-" + strconv.Itoa(params.NumLeds)
 
-	canDisplayNumber, foundInCache := apiCache.Get(cacheKey)
+	canDisplayNumberCacheValue, foundInCache := apiCache.Get(cacheKey)
 	if foundInCache {
-		if params.HttpResponseWriter == nil {
-			fmt.Println(canDisplayNumber)
-			return
-		}
-
 		response := apiResponse{
-			Message: strconv.FormatBool(canDisplayNumber.(bool)),
+			Message: strconv.FormatBool(canDisplayNumberCacheValue.(bool)),
 		}
 		encodeResponse(response, params.HttpResponseWriter)
-		return
+		return RunImplementationsResp{CanDisplayNumber: canDisplayNumberCacheValue.(bool), CacheHit: foundInCache}
 	}
-
-	cacheValue := true
 
 	for _, d := range allDisplays {
 		if d.CanDisplayNumber() {
@@ -79,11 +81,12 @@ func RunImplementations(params RunImplementationParams) {
 			response := apiResponse{
 				Message: "false",
 			}
-			cacheValue = false
+			canDisplayNumberComputedValue = false
 			encodeResponse(response, params.HttpResponseWriter)
 		}
 	}
 
 	fmt.Printf("adding cache key %s\n", cacheKey)
-	apiCache.Set(cacheKey, cacheValue, cache.NoExpiration)
+	apiCache.Set(cacheKey, canDisplayNumberComputedValue, cache.NoExpiration)
+	return RunImplementationsResp{CanDisplayNumber: canDisplayNumberComputedValue, CacheHit: foundInCache}
 }
